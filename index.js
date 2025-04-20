@@ -4,11 +4,12 @@ const { initializeApp, cert } = require("firebase-admin/app");
 const { getDatabase, ref, push } = require("firebase-admin/database");
 const admin = require("firebase-admin");
 
+// Lấy FIREBASE_KEY từ biến môi trường và parse
 const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
 
 admin.initializeApp({
   credential: cert(serviceAccount),
-  databaseURL: "https://taixiu-data-default-rtdb.firebaseio.com"
+  databaseURL: "https://taixiu-data-default-rtdb.firebaseio.com",
 });
 
 const db = getDatabase();
@@ -19,14 +20,16 @@ let ws;
 function connectWebSocket() {
   ws = new WebSocket("wss://l8dar9je9bnsou0p.cq.hk8jk.com/", {
     headers: {
-      "Origin": "https://68gbvn25.site",
+      Origin: "https://68gbvn25.site",
       "User-Agent": "Mozilla/5.0",
-      "Referer": "https://68gbvn25.site/"
-    }
+      Referer: "https://68gbvn25.site/",
+    },
   });
 
   ws.on("open", () => {
     console.log("✅ Đã kết nối WebSocket thành công");
+
+    // Gửi ping để giữ kết nối
     setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
@@ -37,6 +40,7 @@ function connectWebSocket() {
   ws.on("message", (data) => {
     try {
       if (!(data instanceof Buffer)) return;
+
       const hexHeader = data.slice(0, 1).toString("hex");
       const code = parseInt(hexHeader, 16);
       if (code < 0x70 || code > 0x79) return;
@@ -53,7 +57,7 @@ function connectWebSocket() {
         kq,
         sum,
         result,
-        time: Date.now()
+        time: Date.now(),
       });
 
       console.log(`🎲 ${kq.join("-")} = ${sum} → ${result}`);
