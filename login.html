@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chọn Game</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: url("IMAGE/anh-nen-may-tinh-4k-chill_48991223469.jpg") no-repeat center/cover;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .login-box {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.2);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.3);
+      text-align: center;
+      width: 450px;
+      color: white;
+      backdrop-filter: blur(10px);
+    }
+    .form-control {
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+    .form-control option {
+      color: black;
+    }
+    .btn-primary {
+      margin-top: 20px;
+      width: 100%;
+    }
+    #game-screen {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      background: black;
+    }
+    #game-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #robot {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 9999;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: transparent;
+      cursor: grab;
+      user-select: none;
+    }
+    #robot img {
+      width: 70px;
+      height: auto;
+      animation: floatBot 2s ease-in-out infinite;
+    }
+    #robot .bubble {
+      background: white;
+      color: black;
+      border-radius: 10px;
+      padding: 10px 15px;
+      font-size: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      max-width: 250px;
+    }
+    @keyframes floatBot {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+      100% { transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>ANH BẢO</h2>
+    <p>Vui lòng chọn game để sử dụng</p>
+    <form id="game-form">
+      <select id="game-select" class="form-control" required>
+        <option value="">-- Chọn game --</option>
+        <option value="sunwin">SunWin</option>
+        <option value="68">68GameBai</option>
+      </select>
+      <button type="submit" class="btn btn-primary">XÂM NHẬP</button>
+    </form>
+  </div>
+
+  <div id="game-screen">
+    <iframe id="game-frame"></iframe>
+    <div id="robot">
+      <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" alt="robot" />
+      <div class="bubble" id="robot-text">Chờ phiên mới...</div>
+    </div>
+  </div>
+
+  <script>
+    const robot = document.getElementById("robot");
+    const robotText = document.getElementById("robot-text");
+    let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
+
+    robot.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      dragOffsetX = e.clientX - robot.getBoundingClientRect().left;
+      dragOffsetY = e.clientY - robot.getBoundingClientRect().top;
+      robot.style.cursor = "grabbing";
+    });
+    document.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        robot.style.left = Math.max(0, e.clientX - dragOffsetX) + "px";
+        robot.style.top = Math.max(0, e.clientY - dragOffsetY) + "px";
+      }
+    });
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      robot.style.cursor = "grab";
+    });
+
+    let ws = null, history = [], lastSession = null, sessionPredicted = null, predictTimer = null, isWaiting = false;
+
+    function predictNext(history) {
+      while (history.length < 6) {
+        const fakeDice = Array.from({ length: 3 }, () => 1 + Math.floor(Math.random() * 6));
+        const fakeTotal = fakeDice.reduce((a, b) => a + b, 0);
+        history.push({ result: fakeTotal >= 11 ? "TÀI" : "XỈU", total: fakeTotal, fake: true });
+      }
+
+      const recent = history.slice(-6);
+      const results = recent.map(h => h.result === "TÀI" ? "T" : "X");
+      const totals = recent.map(h => h.total);
+
+      const last = results.at(-1);
+      const last2 = results.slice(-2).join("");
+      const last3 = results.slice(-3).join("");
+      const last4 = results.slice(-4).join("");
+      const last6 = results.join("");
+
+      let prediction = null;
+      let confidence = 51;
+
+      // Bệt dài → đảo
+      if (/T{3,}/.test(last6)) prediction = "XỈU", confidence += 15;
+      else if (/X{3,}/.test(last6)) prediction = "TÀI", confidence += 15;
+
+      // Cầu lặp
+      if (!prediction && (last4 === "TXTX" || last4 === "XTXT")) {
+        prediction = last === "T" ? "XỈU" : "TÀI";
+        confidence += 10;
+      }
+
+      // Cầu 2-1-2
+      if (!prediction && (last3 === "TTX" || last3 === "XXT")) {
+        prediction = last3 === "TTX" ? "TÀI" : "XỈU";
+        confidence += 8;
+      }
+
+      // Biến động tổng lớn → đảo
+      const vol = totals.slice(1).reduce((acc, t, i) => acc + Math.abs(t - totals[i]), 0) / 5;
+      if (!prediction && vol > 4.5) {
+        prediction = last === "T" ? "XỈU" : "TÀI";
+        confidence += 5;
+      }
+
+      // Tỷ lệ nghiêng hẳn
+      const tCount = results.filter(r => r === "T").length;
+      const xCount = results.length - tCount;
+      if (!prediction && tCount >= 5) prediction = "XỈU", confidence += 4;
+      else if (!prediction && xCount >= 5) prediction = "TÀI", confidence += 4;
+
+      // Mặc định
+      if (!prediction) {
+        prediction = last === "T" ? "XỈU" : "TÀI";
+        confidence += 2;
+      }
+
+      confidence += Math.random() * 2;
+
+      return { result: prediction, confidence: confidence.toFixed(2) };
+    }
+
+    function startPredict(sessionId) {
+      clearInterval(predictTimer);
+      sessionPredicted = sessionId;
+      const p = predictNext(history);
+      robotText.innerHTML = `#${sessionId} : ${p.result}<br>Độ tin cậy: ${p.confidence}%`;
+    }
+
+    function waitThenPredict(sessionId) {
+      clearInterval(predictTimer);
+      robotText.innerText = "⏳ Chờ phiên mới...";
+      isWaiting = true;
+      setTimeout(() => {
+        isWaiting = false;
+        startPredict(sessionId + 1);
+      }, 20000);
+    }
+
+    function connectWS(url, type = "sunwin") {
+      ws = new WebSocket(url);
+      ws.onopen = () => robotText.innerText = "Đã kết nối, chờ phiên...";
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          let session, dice, total, result;
+          if (type === "sunwin") {
+            session = parseInt(data.Phien);
+            dice = [data.Xuc_xac_1, data.Xuc_xac_2, data.Xuc_xac_3];
+            total = data.Tong;
+            result = data.Ket_qua;
+          } else if (type === "68") {
+            session = parseInt(data.sid);
+            dice = [data.Xuc_xac_1, data.Xuc_xac_2, data.Xuc_xac_3];
+            total = data.Tong;
+            result = data.Ket_qua;
+          }
+          if (session !== lastSession) {
+            lastSession = session;
+            history.push({ session, dice, total, result });
+            if (history.length > 50) history.shift();
+            if (session === sessionPredicted) waitThenPredict(session);
+            else if (!sessionPredicted && !isWaiting) startPredict(session + 1);
+          }
+        } catch (err) {
+          console.error("Lỗi dữ liệu:", err);
+        }
+      };
+      ws.onerror = () => robotText.innerText = "WebSocket lỗi...";
+      ws.onclose = () => {
+        robotText.innerText = "Mất kết nối, đang thử lại...";
+        setTimeout(() => connectWS(url, type), 3000);
+      };
+    }
+
+    document.getElementById("game-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const selected = document.getElementById("game-select").value;
+      if (!selected) {
+        alert("Vui lòng chọn game!");
+        return;
+      }
+      document.querySelector(".login-box").style.display = "none";
+      document.getElementById("game-screen").style.display = "block";
+      if (selected === "sunwin") {
+        document.getElementById("game-frame").src = "https://play.sun.win/?affId=Sunwin";
+        connectWS("ws://163.61.110.10:8000/game_sunwin/ws?id=anhbaocx&key=khanhduanhbaocx12", "sunwin");
+      } else if (selected === "68") {
+        document.getElementById("game-frame").src = "https://68gbvn25.cc";
+        connectWS("ws://localhost:8765", "68");
+      }
+    });
+  </script>
+
+  <script>
+    (function() {
+      let devtoolsOpen = false;
+      const threshold = 160;
+
+      const warningDiv = document.createElement('div');
+      warningDiv.style.position = 'fixed';
+      warningDiv.style.top = '0';
+      warningDiv.style.left = '0';
+      warningDiv.style.width = '100vw';
+      warningDiv.style.height = '100vh';
+      warningDiv.style.backgroundColor = 'black';
+      warningDiv.style.color = 'red';
+      warningDiv.style.fontSize = '48px';
+      warningDiv.style.fontWeight = 'bold';
+      warningDiv.style.display = 'flex';
+      warningDiv.style.justifyContent = 'center';
+      warningDiv.style.alignItems = 'center';
+      warningDiv.style.zIndex = '99999999';
+      warningDiv.style.textAlign = 'center';
+      warningDiv.style.padding = '20px';
+      warningDiv.style.userSelect = 'none';
+      warningDiv.style.fontFamily = 'Arial, sans-serif';
+      warningDiv.style.lineHeight = '1.2';
+      warningDiv.innerText = '🚫 Cấm mở dev dcm 🚫';
+
+      function blockPage() {
+        document.documentElement.innerHTML = '';
+        document.body.appendChild(warningDiv);
+      }
+
+      function detectDevTools() {
+        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+        if (widthThreshold || heightThreshold) {
+          if (!devtoolsOpen) {
+            devtoolsOpen = true;
+            blockPage();
+          }
+        } else {
+          if (devtoolsOpen) {
+            devtoolsOpen = false;
+            location.reload();
+          }
+        }
+      }
+
+      setInterval(detectDevTools, 500);
+
+      window.addEventListener('contextmenu', e => e.preventDefault());
+
+      window.addEventListener('keydown', e => {
+        if (
+          e.key === 'F12' ||
+          (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
+          (e.ctrlKey && e.key === 'U')
+        ) {
+          e.preventDefault();
+          blockPage();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

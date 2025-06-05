@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký tài khoản</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        /* Reset mặc định */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), url('IMAGE/anh-nen-may-tinh-4k-chill_48991223469.jpg') no-repeat center/cover;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1); /* Nền trong suốt */
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px; /* Bo góc mềm mại */
+            box-shadow: 0 4px 15px rgba(208, 205, 205, 0.2);
+            text-align: center;
+            width: 320px;
+            backdrop-filter: blur(10px); /* Làm mờ nền phía sau */
+        }
+
+        .container h1 {
+            margin-bottom: 0.8rem;
+            font-size: 1.6rem;
+            color: #fafbff;
+        }
+
+        .container p {
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            color: #ffffff;
+        }
+
+        .container input {
+            width: 100%;
+            padding: 0.7rem;
+            margin-bottom: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px; /* Bo tròn */
+            font-size: 0.95rem;
+            outline: none;
+            background: rgba(255, 255, 255, 0.2); /* Làm mờ nhẹ */
+            color: white;
+        }
+
+        .container input:focus {
+            border-color: #007bff;
+        }
+        
+        .container input::placeholder {
+            color: white; /* Chữ trong placeholder màu trắng */
+            opacity: 1; /* Đảm bảo không bị mờ */
+        }
+
+        .error-message {
+            color: red;
+            font-size: 0.8rem;
+            margin-bottom: 0.4rem;
+            text-align: left;
+        }
+
+        .container button {
+            width: 100%;
+            padding: 0.7rem;
+            font-size: 0.95rem;
+            background: rgba(0, 123, 255, 0.8); /* Nút bấm trong suốt nhẹ */
+            color: rgb(255, 255, 255);
+            border: none;
+            border-radius: 10px; /* Bo tròn nút */
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .support {
+            margin-top: 0.8rem;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .support a {
+            color: #ecec04;
+            text-decoration: none;
+        }
+
+        .support a:hover {
+            text-decoration: underline;
+        }
+
+        .toggle-link {
+            margin-top: 0.8rem;
+            font-size: 0.85rem;
+            color: #effb11;
+            cursor: pointer;
+        }
+
+        .toggle-link:hover {
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Modal CSS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.5s ease;
+        }
+
+        .modal-content h2 {
+            color: #091540;
+            font-size: 1.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .modal-content p {
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 1rem;
+        }
+
+        .modal-content button {
+            padding: 0.7rem 1.5rem;
+            font-size: 1rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .modal-content button:hover {
+            background: #0056b3;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        button:active {
+            transform: scale(0.85);
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-group i {
+            position: absolute;
+            right: 10px;
+            top: 35%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: white;
+        }
+
+        .input-group i.toggle-password {
+            cursor: pointer; /* Đảm bảo biểu tượng mắt có thể nhấn */
+            right: 15px; /* Khoảng cách từ bên phải */
+            top: 50%; /* Căn giữa theo chiều dọc */
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: white;
+        }
+
+        .input-group input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            outline: none;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99998;
+        }
+
+        /* Cửa sổ thông báo */
+        #devtools-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+            z-index: 99999;
+        }
+
+        /* Nút đóng popup */
+        #close-popup {
+            margin-top: 10px;
+            background: red;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    
+    <!-- Register Form -->
+    <div id="register-container" class="container">
+        <h1>ANH BẢO <br><span>Uy tín làm nên thương hiệu</span></h1>
+        <p>Đăng ký tài khoản</p>
+        <form id="register-form">
+            <input type="text" id="name" placeholder="Họ và tên">
+            <div class="error-message" id="name-error"></div>
+            <input type="email" id="email" placeholder="Email">
+            <div class="error-message" id="email-error"></div>
+            
+            <div class="input-group">
+                <i class='bx bx-hide toggle-password' data-target="password"></i>
+                <input type="password" id="password" placeholder="Mật khẩu">
+            </div>
+            <div class="error-message" id="password-error"></div>
+            
+            <div class="input-group">
+                <i class='bx bx-hide toggle-password' data-target="confirm-password"></i>
+                <input type="password" id="confirm-password" placeholder="Xác nhận mật khẩu">
+            </div>
+            <div class="error-message" id="confirm-password-error"></div>
+            
+            <button type="submit">Đăng ký</button>
+        </form>
+        <div class="support">
+            <p>Mọi thông tin cần hỗ trợ vui lòng liên hệ telegram: 
+                <a href="https://t.me/anhbaocx" target="_blank">@anhbaocx</a>
+                </div>
+                <div class="toggle-link" onclick="toggleForm()">Đã có tài khoản? <strong>Đăng Nhập</strong></div>
+            </div>
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <h2>Đăng ký thành công!</h2>
+            <p>Bạn đã đăng ký tài khoản thành công. Hãy đăng nhập để sử dụng dịch vụ!</p>
+            <button onclick="closeModal()">Đóng</button>
+        </div>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-container" class="container" style="display: none;">
+        <h1>ANH BẢO <br><span>Uy tín làm nên thương hiệu</span></h1>
+        <p>Đăng nhập hệ thống</p>
+        <form id="login-form">
+            <div class="input-group">
+                <i class='bx bx-user'></i>
+                <input type="text" id="login-username" placeholder="Tên đăng nhập">
+            </div>
+            <div class="error-message" id="login-username-error"></div>
+    
+            <div class="input-group">
+                <i class='bx bx-hide toggle-password' data-target="login-password"></i>
+                <input type="password" id="login-password" placeholder="Mã truy cập">
+            </div>
+            <div class="error-message" id="login-password-error"></div>
+    
+            <button type="submit">Đăng nhập</button>
+        </form>
+        <div class="support">
+            <p>Mọi thông tin cần hỗ trợ vui lòng liên hệ telegram 
+                <a href="https://t.me/anhbaocx" target="_blank">@anhbaocx</a>
+                </div>
+                <div class="toggle-link"Q onclick="toggleForm()">Chưa có tài khoản? <strong>Đăng Ký</strong></div>
+            </div>
+
+    <!-- Success Modal for Login -->
+    <div id="login-success-modal" class="modal">
+        <div class="modal-content">
+            <h2>Đăng nhập thành công!</h2>
+            <p>Chúc bạn chơi vui vẻ và may mắn</p>
+            <button onclick="closeLoginModal()">Đóng</button>
+        </div>
+    </div>
+    
+    <div id="overlay"></div>
+    <div id="devtools-popup">
+        <p><b>Bạn không được phép mở Developer Tools!</b></p>
+        <button id="close-popup">OK</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhkIlS7sJlVbZ6A9ZKMeYiH5ZyDJbmY1w",
+        authDomain: "taixiu-official.firebaseapp.com",
+        databaseURL: "https://taixiu-official-default-rtdb.firebaseio.com",
+        projectId: "taixiu-official",
+        storageBucket: "taixiu-official.appspot.com",
+        messagingSenderId: "460194169578",
+        appId: "1:460194169578:web:6e3f61725cb0d7c88d8d93",
+        measurementId: "G-KH4NVKC9C4"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        function toggleForm() {
+            const loginContainer = document.getElementById('login-container');
+            const registerContainer = document.getElementById('register-container');
+
+            if (loginContainer.style.display === 'none') {
+                loginContainer.style.display = 'block';
+                registerContainer.style.display = 'none';
+            } else {
+                loginContainer.style.display = 'none';
+                registerContainer.style.display = 'block';
+            }
+        }
+
+        function validateForm(inputs, errorElements) {
+            let hasError = false;
+
+            inputs.forEach((input, index) => {
+                const value = input.value.trim();
+                if (!value) {
+                    errorElements[index].textContent = `Vui lòng nhập ${input.placeholder.toLowerCase()}.`;
+                    hasError = true;
+                } else {
+                    errorElements[index].textContent = '';
+                }
+            });
+
+            return !hasError;
+        }
+
+        function closeModal() {
+    // Ẩn modal thông báo
+    document.getElementById('success-modal').style.display = 'none';
+    
+    // Chuyển qua phần đăng nhập
+    toggleForm();
+}
+
+
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const database = firebase.database();
+            const auth = firebase.auth();
+
+            // Xử lý đăng ký tài khoản
+            document.getElementById('register-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const inputs = [
+                    document.getElementById('name'),
+                    document.getElementById('email'),
+                    document.getElementById('password'),
+                    document.getElementById('confirm-password'),
+                ];
+                const errors = [
+                    document.getElementById('name-error'),
+                    document.getElementById('email-error'),
+                    document.getElementById('password-error'),
+                    document.getElementById('confirm-password-error'),
+                ];
+
+                if (validateForm(inputs, errors)) {
+                    if (inputs[2].value !== inputs[3].value) {
+                        errors[3].textContent = 'Mật khẩu không khớp.';
+                        return;
+                    }
+
+                    auth.createUserWithEmailAndPassword(inputs[1].value, inputs[2].value)
+                        .then((userCredential) => {
+                            const user = userCredential.user;
+                            const userId = user.uid;
+
+                            // Tạo user và key ngẫu nhiên
+                            const randomUser = "user_" + Math.floor(Math.random() * 100000);
+                            const randomKey = "key_" + Math.floor(Math.random() * 100000);
+
+                            // Lưu dữ liệu người dùng vào Firebase Realtime Database
+                            database.ref('users/' + userId).set({
+                                name: inputs[0].value,
+                                email: inputs[1].value,
+                                user: randomUser,
+                                key: randomKey,
+                                isActive: true, // Mặc định tài khoản sẽ hoạt động
+                                lastLogin: null // Chưa đăng nhập lần nào
+                            }).then(() => {
+                                document.getElementById('success-modal').style.display = 'flex';
+                            }).catch((error) => {
+                                console.error('Lỗi lưu dữ liệu người dùng:', error);
+                            });
+                        })
+                        .catch((error) => {
+                            if (error.code === 'auth/email-already-in-use') {
+                                alert('Địa chỉ email đã được sử dụng bởi một tài khoản khác.');
+                            } else if (error.code === 'auth/invalid-email') {
+                                alert('Địa chỉ email không hợp lệ.');
+                            } else if (error.code === 'auth/weak-password') {
+                                alert('Mật khẩu phải có ít nhất 6 ký tự.');
+                            } else {
+                                alert('Đã xảy ra lỗi: ' + error.message);
+                            }
+                        });
+                }
+            });
+
+            // Xử lý đăng nhập
+            document.getElementById('login-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                
+                const usernameInput = document.getElementById('login-username');
+                const passwordInput = document.getElementById('login-password');
+                const usernameError = document.getElementById('login-username-error');
+                const passwordError = document.getElementById('login-password-error');
+
+                let hasError = false;
+
+                // Xóa thông báo lỗi cũ
+                usernameError.textContent = '';
+                passwordError.textContent = '';
+
+                if (!usernameInput.value.trim()) {
+                    usernameError.textContent = 'Vui lòng nhập tên đăng nhập.';
+                    hasError = true;
+                }
+                if (!passwordInput.value.trim()) {
+                    passwordError.textContent = 'Vui lòng nhập mã truy cập.';
+                    hasError = true;
+                }
+
+                if (hasError) return;
+
+                const usersRef = database.ref('users');
+                usersRef.orderByChild('user').equalTo(usernameInput.value.trim()).once('value', snapshot => {
+                    if (snapshot.exists()) {
+                        snapshot.forEach(userSnapshot => {
+                            const userData = userSnapshot.val();
+                            const userId = userSnapshot.key;
+                            
+                            if (userData.key === passwordInput.value.trim()) {
+                                if (!userData.isActive) {
+                                    passwordError.textContent = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.';
+                                    return;
+                                }
+
+                                // Lấy Device ID
+                                const deviceId = localStorage.getItem('deviceId') || generateDeviceId();
+
+                                // Kiểm tra nếu key đã bị ràng buộc với một thiết bị khác
+                                if (userData.deviceId && userData.deviceId !== deviceId) {
+                                    passwordError.textContent = 'Mã truy cập này chỉ được sử dụng trên thiết bị đã đăng ký.';
+                                    return;
+                                }
+
+                                // Cập nhật Device ID vào Firebase nếu chưa có
+                                database.ref('users/' + userId).update({
+                                    deviceId: deviceId,
+                                    lastLogin: new Date().toISOString()
+                                });
+
+                                localStorage.setItem('deviceId', deviceId);
+
+                                // Đăng nhập thành công
+                                showLoginSuccessModal();
+                            } else {
+                                passwordError.textContent = 'Mã truy cập không đúng.';
+                            }
+                        });
+                    } else {
+                        usernameError.textContent = 'Không tìm thấy tài khoản.';
+                    }
+                });
+            });
+
+        
+
+
+                // Chặn các phím F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+                document.addEventListener("keydown", function(event) {
+                    if (
+                        event.keyCode === 123 || // F12
+                        (event.ctrlKey && event.shiftKey && event.keyCode === 73) || // Ctrl + Shift + I
+                        (event.ctrlKey && event.shiftKey && event.keyCode === 74) || // Ctrl + Shift + J
+                        (event.ctrlKey && event.keyCode === 85) // Ctrl + U
+                    ) {
+                        event.preventDefault();
+                        return false;
+                    }
+                });
+
+                // Chặn chuột phải
+                document.addEventListener("contextmenu", function(event) {
+                    event.preventDefault();
+                });
+
+                // Ẩn console.log khi mở DevTools
+                (function() {
+                    let originalLog = console.log;
+                    console.log = function() {
+                        if (detectDevTools()) return;
+                        originalLog.apply(console, arguments);
+                    };
+                })();
+            })();
+        ;
+
+        function showLoginSuccessModal() {
+    window.location.href = "login.html";
+}
+
+
+
+        function closeLoginModal() {
+            document.getElementById('login-success-modal').style.display = 'none';
+            window.location.href = "login.html";
+        }
+        window.closeLoginModal = closeLoginModal;
+
+        // Hàm quản trị viên để khóa hoặc mở tài khoản
+        function toggleUserStatus(userId, isActive) {
+            const database = firebase.database();
+
+            database.ref('users/' + userId).update({ isActive: isActive })
+                .then(() => {
+                    alert(isActive ? "Tài khoản đã được mở khóa." : "Tài khoản đã bị khóa.");
+                })
+                .catch(error => {
+                    console.error("Lỗi cập nhật trạng thái tài khoản:", error);
+                });
+        }
+
+        // Hàm tạo Device ID giả lập nếu chưa có
+        function generateDeviceId() {
+            const newDeviceId = 'device_' + Math.random().toString(36).substr(2, 10);
+            localStorage.setItem('deviceId', newDeviceId);
+            return newDeviceId;
+        }
+
+         // Xử lý toggle hiển thị/ẩn mật khẩu
+         document.querySelectorAll(".toggle-password").forEach(icon => {
+            icon.addEventListener("click", function () {
+                const targetId = this.getAttribute("data-target");
+                const input = document.getElementById(targetId);
+                
+                if (input.type === "password") {
+                    input.type = "text";
+                    this.classList.remove("bx-hide");
+                    this.classList.add("bx-show");
+                } else {
+                    input.type = "password";
+                    this.classList.remove("bx-show");
+                    this.classList.add("bx-hide");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
